@@ -215,3 +215,37 @@ if __name__=="__main__":
     # print(inference_img.shape)
 
     cv2.imwrite("inference_img.png", inference_img)
+
+    '''
+    for submit prediction
+    '''
+
+    ds_test_size = len(test_x)
+    loop_num = ds_test_size//config.batch_size
+    if  ds_test_size%config.batch_size != 0:
+        loop_num+=1
+
+    result = []
+    for i in range(loop_num):
+        one_test_x = test_x[i*config.batch_size:(i+1)*config.batch_size]
+        assert len(one_test_x) > 0, "the test x is empty"
+        one_result = model(one_test_x)
+        cls_result = np.argmax(one_result["cls"].numpy(),axis = -1) 
+        result.append(cls_result)
+
+        print(cls_result.shape)
+    
+    result = np.concatenate(result, axis = 0)
+
+
+
+
+    output = pd.DataFrame({'ImageId':np.arange(1,ds_test_size+1),
+                    'Label':result
+                    })
+
+    print(output.head(30))
+
+    output.to_csv('predict.csv', index = False)
+    print("save to csv!!")
+    

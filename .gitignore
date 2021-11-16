@@ -8,3 +8,4 @@ test_cosine_decay.py
 data
 *.pdf
 *.png
+*.csv
