@@ -29,17 +29,19 @@ class Autoencoder_Classification_Net(tf.keras.Model):
         self.c3 = tf.keras.layers.Conv2D(mlp_dim*(2**2), 3, 1, padding = "same", activation="tanh") # =>14, 14
         self.c4 = tf.keras.layers.Conv2D(mlp_dim*(2**2), 4, 2, padding = "same", activation="tanh") # =>7, 7
         self.c5 = tf.keras.layers.Conv2D(mlp_dim*(2**3), 3, 1, padding = "same", activation="tanh") # =>7, 7
-        self.c6 = tf.keras.layers.Conv2D(mlp_dim*(2**4), 7, 1, padding = "valid", activation="tanh") # => 1, 1 
+        # self.c6 = tf.keras.layers.Conv2D(mlp_dim*(2**5), 7, 1, padding = "valid", activation="tanh") # => 1, 1 
         self.f1 = tf.keras.layers.Flatten()
 
         self.head = tf.keras.layers.Dense(self.out_dim, name = "cls")
 
-        self.uf1 = tf.keras.layers.Reshape([1,1,mlp_dim*(2**4)])
-        self.c7 = tf.keras.layers.Conv2DTranspose(mlp_dim*(2**4), 7, 1, padding = "valid", activation="tanh") # => 1, 1 
+        # self.uf1 = tf.keras.layers.Reshape([1,1,mlp_dim*(2**5)])
+        self.uf1 = tf.keras.layers.Reshape([7,7,mlp_dim*(2**3)])
+
+        # self.c7 = tf.keras.layers.Conv2DTranspose(mlp_dim*(2**5), 7, 1, padding = "valid", activation="tanh") # => 1, 1 
         self.c8 = tf.keras.layers.Conv2D(mlp_dim*(2**3), 3, 1, padding = "same", activation="tanh") # =>7, 7
-        self.c9 = tf.keras.layers.Conv2DTranspose(mlp_dim*(2**2), 4, 2, padding = "same", activation="tanh") # =>7, 7
-        self.c10 = tf.keras.layers.Conv2D(mlp_dim*(2**2), 3, 1, padding = "same", activation="tanh") # =>14, 14
-        self.c11 = tf.keras.layers.Conv2DTranspose(mlp_dim*(2), 4, 2, padding = "same", activation="tanh") # =>14, 14
+        self.c9 = tf.keras.layers.Conv2DTranspose(mlp_dim*(2**3), 4, 2, padding = "same", activation="tanh") # =>7, 7
+        self.c10 = tf.keras.layers.Conv2D(mlp_dim*(2**3), 3, 1, padding = "same", activation="tanh") # =>14, 14
+        self.c11 = tf.keras.layers.Conv2DTranspose(mlp_dim*(2**2), 4, 2, padding = "same", activation="tanh") # =>14, 14
         self.c12 = tf.keras.layers.Conv2D(1, 3, 1, padding = "same", activation="tanh", name = "recon") # =>28, 28
         
 
@@ -71,11 +73,12 @@ class Autoencoder_Classification_Net(tf.keras.Model):
         x = self.c3(x)
         x = self.c4(x)
         x = self.c5(x)
-        x = self.c6(x)
+        print("x:",x.shape)
+        # x = self.c6(x)
         embed = self.f1(x)
         print("embed:",embed.shape)
         x = self.uf1(embed)
-        x = self.c7(x)
+        # x = self.c7(x)
         x = self.c8(x)
         x = self.c9(x)
         x = self.c10(x)

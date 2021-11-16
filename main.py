@@ -14,6 +14,7 @@ class Sigmoid_Xent_with_Logit(tf.keras.losses.Loss):
 
     def call(self, y_true, y_pred):
         loss = tf.nn.sigmoid_cross_entropy_with_logits(y_true, y_pred)
+        loss = tf.reduce_sum(loss, axis = [1,2,3])
         return tf.reduce_mean(loss)
 
 
@@ -25,7 +26,7 @@ class AttrDict(dict):
 def define_config(dataset_size):
     config = AttrDict()
     config.shuffle_buffer = 2000
-    config.batch_size = 10
+    config.batch_size = 32
     config.base_lr = 1e-3
     config.log_dir = "./tf_log/"
     config.model_path = './model/titanic_cls.ckpt'
@@ -37,7 +38,7 @@ def define_config(dataset_size):
 
 def define_model_config(num_class):
     config = AttrDict()
-    config.mlp_dim = 10
+    config.mlp_dim = 16
     config.layer_num = 8
     config.out_dim = num_class
     return config
@@ -53,7 +54,15 @@ def ds_preprocess(item_x, item_y, num_class):
 
 
 if __name__=="__main__":
-    tf.data.experimental.enable_debug_mode()
+
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    tf.config.set_visible_devices(gpus[0], 'GPU')
+    if gpus:
+        # Currently, memory growth needs to be the same across GPUs
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+
+    # tf.data.experimental.enable_debug_mode()
     train_pd = pd.read_csv("./data/train.csv")
     # print(train_pd.head())
 
@@ -85,6 +94,8 @@ if __name__=="__main__":
     # release train_array
     train_array = 0
     test_array = 0
+
+    print("val_x:",val_x.shape)
 
 
 
@@ -175,17 +186,18 @@ if __name__=="__main__":
         metrics = {"cls":tf.keras.metrics.CategoricalAccuracy(), "recon":tf.keras.metrics.BinaryCrossentropy(from_logits = True)}
         )
 
-    # print(model.summary())
+    print(model.summary())
+    print(ae_cls_net.summary())
 
     
 
 
     hist = model.fit(ds_train,
-                epochs=1, 
-                # steps_per_epoch=config.steps_per_epoch,
-                steps_per_epoch=1000,
+                epochs=2, 
+                steps_per_epoch=config.steps_per_epoch,
+                # steps_per_epoch=1,
                 validation_data = ds_val,
-                validation_steps=30,callbacks = callback_list).history
+                validation_steps=32,callbacks = callback_list).history
 
     
 
@@ -194,10 +206,12 @@ if __name__=="__main__":
     # print(last_predict)
     # print(last_predict.shape) # (418,)
 
-    test_result = model(test_x)
+
+    test_result = model(test_x[:10])
     test_x_0 = (test_x[0]+1)/2*255
-    inference_img = np.concatenate([test_result["recon"][0]*255,test_x_0], axis = 1)
+    test_recon = test_result["recon"][0]*255
+    inference_img = np.concatenate([test_recon,test_x_0], axis = 1)
     inference_img = inference_img.reshape([28,-1,1])
-    print(inference_img.shape)
+    # print(inference_img.shape)
 
     cv2.imwrite("inference_img.png", inference_img)
