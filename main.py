@@ -45,15 +45,34 @@ def define_model_config(num_class):
 
 
 def ds_preprocess(item_x, item_y, num_class):
+    print("item_x.shape:", item_x.shape) # 28,28,1
     x = (item_x/255)*2 - 1 # to -1~1
     recon_y = item_x/255 # 0~1
     y = item_y
+
+    # print("item_x.shape:", item_x.shape) # 28,28,1
     
     one_hot_y = tf.one_hot(y, num_class)
     return {"image":x}, {"cls":one_hot_y, "recon":recon_y}
 
+# def ds_augmentation(item_x, item_y):
+#     '''
+#     print("item_x.shape:", item_x.shape) # 28,28,1
+#     '''
+#     aug_img = item_x
+#     aug_img = tf.keras.layers.RandomRotation(0.05, fill_mode="nearest", interpolation="nearest")(aug_img)
+#     aug_img = tf.keras.layers.RandomZoom(0.15, fill_mode="nearest", interpolation="nearest")(aug_img)
+#     aug_img = tf.keras.layers.RandomTranslation(0.1, 0.1, fill_mode="nearest", interpolation="nearest")(aug_img)
+
+#     return aug_img, item_y
+
+
+    
+
 
 if __name__=="__main__":
+
+
 
     gpus = tf.config.experimental.list_physical_devices('GPU')
     tf.config.set_visible_devices(gpus[0], 'GPU')
@@ -119,10 +138,16 @@ if __name__=="__main__":
     '''
     make dataset
     '''
+    ds_augmentation = tf.keras.Sequential([
+            tf.keras.layers.RandomRotation(0.05, fill_mode="nearest", interpolation="nearest"),
+            tf.keras.layers.RandomZoom(0.15, fill_mode="nearest", interpolation="nearest"),
+            tf.keras.layers.RandomTranslation(0.1, 0.1, fill_mode="nearest", interpolation="nearest")])
+
     partial_ds_preprocess = partial(ds_preprocess, num_class = num_class)
     ds_train_x = tf.data.Dataset.from_tensor_slices(train_x)
     ds_train_y = tf.data.Dataset.from_tensor_slices(train_y)
     ds_train = tf.data.Dataset.zip((ds_train_x, ds_train_y))
+    ds_train = ds_train.map(lambda x, y: (ds_augmentation(x), y), tf.data.experimental.AUTOTUNE)
     ds_train = ds_train.map(partial_ds_preprocess,  tf.data.experimental.AUTOTUNE)
     ds_train = ds_train.repeat()
     ds_train = ds_train.shuffle(config.shuffle_buffer)
@@ -189,11 +214,12 @@ if __name__=="__main__":
     print(model.summary())
     print(ae_cls_net.summary())
 
-    
+    # model.load_weights(config.model_path)
+
 
 
     hist = model.fit(ds_train,
-                epochs=2, 
+                epochs=50, 
                 steps_per_epoch=config.steps_per_epoch,
                 # steps_per_epoch=1,
                 validation_data = ds_val,
@@ -206,6 +232,7 @@ if __name__=="__main__":
     # print(last_predict)
     # print(last_predict.shape) # (418,)
 
+    test_x = (test_x/255)*2 - 1
 
     test_result = model(test_x[:10])
     test_x_0 = (test_x[0]+1)/2*255
@@ -225,6 +252,7 @@ if __name__=="__main__":
     if  ds_test_size%config.batch_size != 0:
         loop_num+=1
 
+    # test_x = (test_x/255)*2 - 1
     result = []
     for i in range(loop_num):
         one_test_x = test_x[i*config.batch_size:(i+1)*config.batch_size]
@@ -248,4 +276,32 @@ if __name__=="__main__":
 
     output.to_csv('predict.csv', index = False)
     print("save to csv!!")
+
+
+    # '''
+    # check aug function
+    # '''
+
+
+    # aug_img = one_train_data["image"][0]
+    # aug_img = (aug_img+1)*255/2
+    # org_img = aug_img
+    
+
+    # # aug_img = tf.keras.preprocessing.image.random_rotation(aug_img, 15,row_axis=1, col_axis=0, channel_axis=2)
+    # # aug_img = tf.keras.preprocessing.image.random_zoom(aug_img, (0.85, 0.85), row_axis=1, col_axis=0, channel_axis=2)
+    # # aug_img = tf.keras.preprocessing.image.random_shift(aug_img, 0.15, 0.15, row_axis=1, col_axis=0, channel_axis=2)
+
+    # # aug_img = tf.keras.layers.RandomRotation(0.05, fill_mode="nearest", interpolation="nearest")(aug_img)
+    # # aug_img = tf.keras.layers.RandomZoom(0.15, fill_mode="nearest", interpolation="nearest")(aug_img)
+    # # aug_img = tf.keras.layers.RandomTranslation(0.1, 0.1, fill_mode="nearest", interpolation="nearest")(aug_img)
+
+    # compare_aug_img = np.concatenate([aug_img,org_img], axis = 1)
+
+    
+    
+
+
+    # cv2.imwrite("aug_img.png", compare_aug_img)
+
     
